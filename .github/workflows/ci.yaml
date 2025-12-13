@@ -42,20 +42,20 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           role-duration-seconds: 900
           role-session-name: GithubActionsLambdaDeployment
 
       - name: Deploy
         run: |
-          S3_DEST_FOLDER_LAMBDA="s3://${{ secrets.AWS_S3_BUCKET_LAMBDA_SOURCE }}/${{ secrets.PROJECT_ORG }}/${{ secrets.PROJECT_NAME }}"
-          S3_DEST_FOLDER_LAYER="s3://${{ secrets.AWS_S3_BUCKET_LAMBDA_LAYER }}/${{ secrets.PROJECT_ORG }}/${{ secrets.PROJECT_NAME }}"
+          S3_DEST_FOLDER_LAMBDA="s3://${{ env.AWS_S3_BUCKET_LAMBDA_SOURCE }}/${{ env.GITHUB_REPOSITORY }}"
+          S3_DEST_FOLDER_LAYER="s3://${{ env.AWS_S3_BUCKET_LAMBDA_LAYER }}/${{ env.GITHUB_REPOSITORY }}"
           # Upload to S3
           aws s3 cp $S3_DEST_FOLDER_LAMBDA --recursive --exclude "*" --include "image-$GITHUB_SHORT_SHA.zip" --include "pdf-$GITHUB_SHORT_SHA.zip"
           aws s3 cp $S3_DEST_FOLDER_LAYER --recursive --exclude "*" --include "image-*-layer.zip" --include "pdf-*-layer.zip"
           # Update SSM Parameter
-          aws ssm put-parameter --name ${{ secrets.AWS_SSM_IMAGE_LAMBDA }} --type String \ 
+          aws ssm put-parameter --name ${{ env.AWS_SSM_IMAGE_LAMBDA }} --type String \ 
           --value '{"lambda": "${S3_DEST_FOLDER_LAMBDA}/image-${GITHUB_SHORT_SHA}.zip", "layer": "${S3_DEST_FOLDER_LAMBDA}/image-${GITHUB_SHORT_SHA}-layer.zip"}'
-          aws ssm put-parameter --name ${{ secrets.AWS_SSM_PDF_LAMBDA }} --type String \
+          aws ssm put-parameter --name ${{ env.AWS_SSM_PDF_LAMBDA }} --type String \
           --value '{"lambda": "${S3_DEST_FOLDER_LAMBDA}/pdf-${GITHUB_SHORT_SHA}.zip", "layer": "${S3_DEST_FOLDER_LAMBDA}/pdf-${GITHUB_SHORT_SHA}-layer.zip"}'
