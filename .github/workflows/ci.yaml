@@ -1,0 +1,61 @@
+name: Lambda Source Deployment
+on:
+  pull_request:
+    types:
+      - opened
+
+
+jobs:
+  BuildAndDeploy:
+    runs-on: ubuntu-22.04
+    permissions:
+      id-token: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Test
+        run: |
+          pytest
+
+      - name: Build
+        run: |
+          GITHUB_SHA=${{ github.event.pull_request.head.sha }}
+          GITHUB_SHORT_SHA=${GITHUB_SHA:0:7}
+          chmod +x ./.scripts/zip_function.sh
+          ./.scripts/zip_function.sh image $GITHUB_SHORT_SHA
+          ./.scripts/zip_function.sh pdf $GITHUB_SHORT_SHA
+          chmod +x ./.scripts/zip_layer.sh
+          ./.scripts/zip_layer.sh image $GITHUB_SHORT_SHA
+          ./.scripts/zip_layer.sh pdf $GITHUB_SHORT_SHA
+          # Export for later steps
+          echo "GITHUB_SHORT_SHA=$GITHUB_SHORT_SHA" >> $GITHUB_ENV
+
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 900
+          role-session-name: GithubActionsLambdaDeployment
+
+      - name: Deploy
+        run: |
+          S3_DEST_FOLDER_LAMBDA="s3://${{ secrets.AWS_S3_BUCKET_LAMBDA_SOURCE }}/${{ secrets.PROJECT_ORG }}/${{ secrets.PROJECT_NAME }}"
+          S3_DEST_FOLDER_LAYER="s3://${{ secrets.AWS_S3_BUCKET_LAMBDA_LAYER }}/${{ secrets.PROJECT_ORG }}/${{ secrets.PROJECT_NAME }}"
+          # Upload to S3
+          aws s3 cp $S3_DEST_FOLDER_LAMBDA --recursive --exclude "*" --include "image-$GITHUB_SHORT_SHA.zip" --include "pdf-$GITHUB_SHORT_SHA.zip"
+          aws s3 cp $S3_DEST_FOLDER_LAYER --recursive --exclude "*" --include "image-*-layer.zip" --include "pdf-*-layer.zip"
+          # Update SSM Parameter
+          aws ssm put-parameter --name ${{ secrets.AWS_SSM_IMAGE_LAMBDA }} --type String \ 
+          --value '{"lambda": "${S3_DEST_FOLDER_LAMBDA}/image-${GITHUB_SHORT_SHA}.zip", "layer": "${S3_DEST_FOLDER_LAMBDA}/image-${GITHUB_SHORT_SHA}-layer.zip"}'
+          aws ssm put-parameter --name ${{ secrets.AWS_SSM_PDF_LAMBDA }} --type String \
+          --value '{"lambda": "${S3_DEST_FOLDER_LAMBDA}/pdf-${GITHUB_SHORT_SHA}.zip", "layer": "${S3_DEST_FOLDER_LAMBDA}/pdf-${GITHUB_SHORT_SHA}-layer.zip"}'
