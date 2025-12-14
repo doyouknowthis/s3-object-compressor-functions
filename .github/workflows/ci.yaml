@@ -9,7 +9,7 @@ jobs:
   BuildAndDeploy:
     runs-on: ubuntu-22.04
     permissions:
-      id-token: read
+      id-token: write
       contents: read
 
     steps:
