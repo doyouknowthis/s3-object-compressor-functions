@@ -65,7 +65,7 @@ jobs:
           # Update SSM Parameter
           aws ssm put-parameter \
             --name ${{ vars.AWS_SSM_IMAGE_LAMBDA }} \
-            --type String \ 
+            --type String \
             --override \
             --value "{\"lambda\": \"${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}.zip\", \"layer\": \"${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}-layer.zip\"}"
           aws ssm put-parameter \
