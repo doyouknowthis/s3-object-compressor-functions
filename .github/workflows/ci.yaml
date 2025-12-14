@@ -71,5 +71,5 @@ jobs:
           aws ssm put-parameter \
             --name ${{ vars.AWS_SSM_PDF_LAMBDA }} \
             --type String \
-            --ovewrite \
+            --overwrite \
             --value "{\"lambda\": \"${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}.zip\", \"layer\": \"${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}-layer.zip\"}"
