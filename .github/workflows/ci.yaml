@@ -60,10 +60,10 @@ jobs:
           S3_DEST_FOLDER_LAMBDA="s3://${{ vars.AWS_S3_BUCKET_LAMBDA_SOURCE }}/${{ env.GITHUB_REPOSITORY }}"
           S3_DEST_FOLDER_LAYER="s3://${{ vars.AWS_S3_BUCKET_LAMBDA_LAYER }}/${{ env.GITHUB_REPOSITORY }}"
           # Upload to S3
-          aws s3 cp $S3_DEST_FOLDER_LAMBDA --recursive --exclude "*" --include "image-${{ env.GITHUB_SHORT_SHA }}.zip" --include "pdf-${{ env.GITHUB_SHORT_SHA }}.zip"
-          aws s3 cp $S3_DEST_FOLDER_LAYER --recursive --exclude "*" --include "image-*-layer.zip" --include "pdf-*-layer.zip"
+          aws s3 cp . "$S3_DEST_FOLDER_LAMBDA" --recursive --exclude "*" --include "image-${{ env.GITHUB_SHORT_SHA }}.zip" --include "pdf-${{ env.GITHUB_SHORT_SHA }}.zip"
+          aws s3 cp . "$S3_DEST_FOLDER_LAYER" --recursive --exclude "*" --include "image-*-layer.zip" --include "pdf-*-layer.zip"
           # Update SSM Parameter
           aws ssm put-parameter --name ${{ vars.AWS_SSM_IMAGE_LAMBDA }} --type String \ 
-          --value '{"lambda": "${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}.zip", "layer": "${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}-layer.zip"}'
+          --value "{\"lambda\": \"${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}.zip\", \"layer\": \"${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}-layer.zip\"}"
           aws ssm put-parameter --name ${{ vars.AWS_SSM_PDF_LAMBDA }} --type String \
-          --value '{"lambda": "${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}.zip", "layer": "${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}-layer.zip"}'
+          --value "{\"lambda\": \"${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}.zip\", \"layer\": \"${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}-layer.zip\"}"
