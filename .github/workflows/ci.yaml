@@ -66,10 +66,10 @@ jobs:
           aws ssm put-parameter \
             --name ${{ vars.AWS_SSM_IMAGE_LAMBDA }} \
             --type String \
-            --override \
+            --overwrite \
             --value "{\"lambda\": \"${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}.zip\", \"layer\": \"${S3_DEST_FOLDER_LAMBDA}/image-${{ env.GITHUB_SHORT_SHA }}-layer.zip\"}"
           aws ssm put-parameter \
             --name ${{ vars.AWS_SSM_PDF_LAMBDA }} \
             --type String \
-            --override \
+            --ovewrite \
             --value "{\"lambda\": \"${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}.zip\", \"layer\": \"${S3_DEST_FOLDER_LAMBDA}/pdf-${{ env.GITHUB_SHORT_SHA }}-layer.zip\"}"
