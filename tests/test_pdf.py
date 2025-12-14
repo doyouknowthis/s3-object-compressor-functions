@@ -1,8 +1,8 @@
 import os
 
+from moto import mock_aws
 import boto3
 from aws_lambda_typing import events
-from moto import mock_aws
 
 from functions.pdf.lambda_function import lambda_handler
 
