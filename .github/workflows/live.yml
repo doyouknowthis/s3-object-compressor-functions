@@ -1,0 +1,55 @@
+name: Lambda Live
+on:
+  push:
+    branches: [ main ]
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+
+jobs:
+  Live:
+    name: Deploy to AWS
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Get commit SHA from tag
+        id: tag_info
+        run: |
+          # Get full commit SHA that this tag points to
+          COMMIT_SHA=$(git rev-list -n 1 ${{ github.ref }})
+          SHORT_SHA=${COMMIT_SHA:0:7}
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 900
+          role-session-name: GithubActionsLambdaDeployment
+
+      - name: Update Lambda SSM Parameters
+        env:
+          SHORT_SHA: ${{ steps.tag_info.outputs.short_sha }}
+        run: |
+          set -e
+          # Update SSM Parameter
+          for FUNC in image pdf; do
+            aws ssm put-parameter \
+              --name "/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}/lambda/${FUNC}/prd" \
+              --type String \
+              --overwrite \
+              --value "{\"lambda\": \"${S3_LAMBDA}/${FUNC}-${SHORT_SHA}.zip\", \"layer\": \"${S3_LAYER}/${FUNC}-layer-${SHORT_SHA}.zip\"}"
+
+      - name: Build Complete
+        if: success()
+        run: |
+          echo "## Lambda PRD Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Packages: image, pdf" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
