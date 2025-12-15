@@ -1,0 +1,161 @@
+name: Lambda Development
+on:
+  push:
+    branches:
+      - 'feat/*'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+env:
+  PYTHON_VERSION: "3.11"
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+
+jobs:
+  Lint:
+    name: Lint & SAST
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install lint dependencies
+        run: |
+          pip install \
+            flake8 \
+            black \
+            isort \
+            mypy \
+            types-requests
+
+      - name: Run black (format check)
+        run: black --check .
+
+      - name: Run isort (import order)
+        run: isort --check-only .
+
+      - name: Run flake8
+        run: flake8 .
+
+      - name: Run mypy
+        run: mypy .
+
+  Test:
+    name: Unit Tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -q -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest
+
+  Build:
+    name: Build Lambda Artifacts
+    runs-on: ubuntu-22.04
+    needs: [ Lint, Test ]
+    outputs:
+      short_sha: ${{ steps.vars.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Compute short SHA
+        id: vars
+        run: |
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Build Lambda Artifacts
+        run: |
+          ./.scripts/zip_function.sh image ${{ steps.vars.outputs.short_sha }}
+          ./.scripts/zip_layer.sh image ${{ steps.vars.outputs.short_sha }}
+
+          ./.scripts/zip_function.sh pdf ${{ steps.vars.outputs.short_sha }}
+          ./.scripts/zip_layer.sh pdf ${{ steps.vars.outputs.short_sha }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-artifacts
+          path: |
+            image-*.zip
+            pdf-*.zip
+          retention-days: 180
+
+  Deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-22.04
+    needs: Build
+    if: success()
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-artifacts
+
+      - uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 900
+          role-session-name: GithubActionsLambdaDeployment
+
+      - name: Deploy Lambda Artifacts
+        env:
+          SHORT_SHA: ${{ needs.build.outputs.short_sha }}
+          S3_LAMBDA: "s3://${{ vars.AWS_S3_BUCKET_LAMBDA_SOURCE }}/${{ github.repository }}/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}"
+          S3_LAYER: "s3://${{ vars.AWS_S3_BUCKET_LAMBDA_LAYER }}/${{ github.repository }}/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}"
+        run: |
+          set -e
+          # Upload to S3
+          aws s3 cp . "$S3_LAMBDA" --recursive \
+            --exclude "*" \
+            --include "*-${SHORT_SHA}.zip" \
+            --exclude "*-layer-${SHORT_SHA}.zip"
+          
+          aws s3 cp . "$S3_LAYER" --recursive \
+            --exclude "*" \
+            --include "*-layer-${SHORT_SHA}.zip"
+
+          # Update SSM Parameter
+          for FUNC in image pdf; do
+            aws ssm put-parameter \
+              --name "/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}/lambda/${FUNC}/dev" \
+              --type String \
+              --overwrite \
+              --value "{\"lambda\": \"${S3_LAMBDA}/${FUNC}-${SHORT_SHA}.zip\", \"layer\": \"${S3_LAYER}/${FUNC}-layer-${SHORT_SHA}.zip\"}"
+
+      - name: Build Complete
+        if: success()
+        run: |
+          echo "## Lambda DEV Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Packages: image, pdf" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit SHA: ${{ github.event.pull_request.head.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

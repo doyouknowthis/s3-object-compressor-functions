@@ -11,12 +11,12 @@ zip_layer() {
 
   # echo "Deleting initial directories"
   rm -rdf python/
-  rm -f "${function_name}-${function_suffix}-layer.zip"
+  rm -f "${function_name}-layer-${function_suffix}.zip"
 
   cd "src/functions/$function_name/" || return
   pip install -r requirements.txt -t python
-  zip -r "${function_name}-${function_suffix}-layer" python/
-  mv "${function_name}-${function_suffix}-layer.zip" ../../..
+  zip -r "${function_name}-layer-${function_suffix}" python/
+  mv "${function_name}-layer-${function_suffix}.zip" ../../..
 
   # echo "Deleting \"python\" directory"
   rm -rdf python/
