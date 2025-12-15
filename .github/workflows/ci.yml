@@ -123,8 +123,8 @@ jobs:
       - name: Deploy Lambda Artifacts
         env:
           SHORT_SHA: ${{ needs.build.outputs.short_sha }}
-          S3_LAMBDA: "s3://${{ vars.AWS_S3_BUCKET_LAMBDA_SOURCE }}/${{ github.repository }}/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}"
-          S3_LAYER: "s3://${{ vars.AWS_S3_BUCKET_LAMBDA_LAYER }}/${{ github.repository }}/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}"
+          S3_LAMBDA: "s3://${{ vars.AWS_S3_BUCKET_LAMBDA_SOURCE }}/github/${{ github.repository_owner }}/${{ vars.PROJECT_NAME }}"
+          S3_LAYER: "s3://${{ vars.AWS_S3_BUCKET_LAMBDA_LAYER }}/github/${{ github.repository_owner }}/${{ vars.PROJECT_NAME }}"
         run: |
           set -e
           # Upload to S3
@@ -140,7 +140,7 @@ jobs:
           # Update SSM Parameter
           for FUNC in image pdf; do
             aws ssm put-parameter \
-              --name "/github/${{ env.GITHUB_REPOSITORY_OWNER }}/${{ vars.PROJECT_NAME }}/lambda/${FUNC}/dev" \
+              --name "/github/${{ github.repository_owner }}/${{ vars.PROJECT_NAME }}/lambda/${FUNC}/dev" \
               --type String \
               --overwrite \
               --value "{\"lambda\": \"${S3_LAMBDA}/${FUNC}-${SHORT_SHA}.zip\", \"layer\": \"${S3_LAYER}/${FUNC}-layer-${SHORT_SHA}.zip\"}"
