@@ -144,6 +144,7 @@ jobs:
               --type String \
               --overwrite \
               --value "{\"lambda\": \"${S3_LAMBDA}/${FUNC}-${SHORT_SHA}.zip\", \"layer\": \"${S3_LAYER}/${FUNC}-layer-${SHORT_SHA}.zip\"}"
+          done
 
       - name: Build Complete
         if: success()
