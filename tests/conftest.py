@@ -15,22 +15,7 @@ def get_file():
 
 
 @pytest.fixture(scope="function")
-def aws_credentials():
-    """Set up mocked AWS credentials for pytest.
-
-    This fixture sets fake credentials in environment variables.
-    Required to be run BEFORE any boto3 clients/resources are created.
-    """
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-    yield
-
-
-@pytest.fixture(scope="function")
-def mocked_aws(aws_credentials):
+def mocked_aws():
     """Mock all AWS interactions using moto.
 
     Use this fixture if your tests interact with multiple AWS services.
@@ -41,7 +26,7 @@ def mocked_aws(aws_credentials):
 
 
 @pytest.fixture(scope="function")
-def s3_client(aws_credentials):
+def s3_client():
     """Return a mocked S3 client.
 
     Example usage in tests:

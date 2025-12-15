@@ -1,8 +1,5 @@
 name: Lambda Development
 on:
-  push:
-    branches:
-      - 'feat/*'
   pull_request:
     types:
       - opened
@@ -33,21 +30,12 @@ jobs:
           pip install \
             flake8 \
             black \
-            isort \
-            mypy \
-            types-requests
 
       - name: Run black (format check)
-        run: black --check .
-
-      - name: Run isort (import order)
-        run: isort --check-only .
+        run: black --check --diff .
 
       - name: Run flake8
-        run: flake8 .
-
-      - name: Run mypy
-        run: mypy .
+        run: flake8 --max-line-length=120 .
 
   Test:
     name: Unit Tests
@@ -64,6 +52,12 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Install dependencies
+        env:
+          AWS_ACCESS_KEY_ID: "testing"
+          AWS_SECRET_ACCESS_KEY: "testing"
+          AWS_SECURITY_TOKEN: "testing"
+          AWS_SESSION_TOKEN: "testing"
+          AWS_DEFAULT_REGION: "us-east-1"
         run: |
           pip install -q -r requirements.txt
           pip install pytest

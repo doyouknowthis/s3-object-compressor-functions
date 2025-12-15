@@ -7,7 +7,11 @@ from PIL import Image
 from aws_lambda_typing import context as context_, events
 from pikepdf import Name, PdfImage
 
-from functions.common import s3_event_record_to_bucket_and_key, s3_download_object_to_file, s3_upload_file_to_bucket
+from functions.common import (
+    s3_event_record_to_bucket_and_key,
+    s3_download_object_to_file,
+    s3_upload_file_to_bucket,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +35,17 @@ def lambda_handler(event: events.S3Event, context: context_.Context) -> None:
         compress_images_in_pdf(tmp_file_in, tmp_file_out)
 
         new_key = f"{file_name}_compressed{file_ext}"
-        logger.info(f"Uploading compressed object {tmp_file_out} to bucket {bucket} with key {new_key}.")
+        logger.info(
+            f"Uploading compressed object {tmp_file_out} to bucket {bucket} with key {new_key}."
+        )
 
         s3_upload_file_to_bucket(bucket, new_key, tmp_file_out)
 
 
 # credits: ChatGPT
-def compress_pil_image(pil_img, target_dpi=(72, 72), jpeg_quality=75, target_scale=72 / 300):
+def compress_pil_image(
+    pil_img, target_dpi=(72, 72), jpeg_quality=75, target_scale=72 / 300
+):
     # Resize the PIL image according to your scale (same logic as before)
     orig_w, orig_h = pil_img.size
     new_w = max(1, int(orig_w * target_scale))

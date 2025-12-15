@@ -8,23 +8,20 @@ from functions.pdf.lambda_function import lambda_handler
 def test_handler(get_file, s3_client):
     test_bucket = "test-bucket"
     test_key = "test-pdf.pdf"
+    test_file = get_file("./resources/gsw-short-paper-guidelines.pdf")
 
     """
     Upload a file from resources/ so boto3.client can download it.
     """
     s3_client.create_bucket(Bucket=test_bucket)
-    s3_client.put_object(Bucket=test_bucket, Key=test_key, Body=get_file("./resources/gsw-short-paper-guidelines.pdf"))
+    s3_client.put_object(Bucket=test_bucket, Key=test_key, Body=test_file)
 
     """
     Call the handler with a mock event.
     """
     event: events.S3Event = {
         "Records": [
-            {
-                "s3": {
-                    "bucket": {"name": test_bucket}, "object": {"key": test_key}
-                }
-            }
+            {"s3": {"bucket": {"name": test_bucket}, "object": {"key": test_key}}}
         ]
     }
     lambda_handler(event, None)
@@ -37,4 +34,6 @@ def test_handler(get_file, s3_client):
     assert len(objects_in_bucket["Contents"]) == 2
 
     file_name, file_ext = os.path.splitext(os.path.basename(test_key))
-    assert objects_in_bucket["Contents"][1]["Key"] == f"{file_name}_compressed{file_ext}"
+    assert (
+        objects_in_bucket["Contents"][1]["Key"] == f"{file_name}_compressed{file_ext}"
+    )

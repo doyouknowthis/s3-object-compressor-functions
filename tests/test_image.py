@@ -21,11 +21,7 @@ def test_handler_png(get_file, s3_client):
     """
     event: events.S3Event = {
         "Records": [
-            {
-                "s3": {
-                    "bucket": {"name": test_bucket}, "object": {"key": test_key}
-                }
-            }
+            {"s3": {"bucket": {"name": test_bucket}, "object": {"key": test_key}}}
         ]
     }
     lambda_handler(event, None)
@@ -38,7 +34,9 @@ def test_handler_png(get_file, s3_client):
     assert len(objects_in_bucket["Contents"]) == 2
 
     file_name, file_ext = os.path.splitext(os.path.basename(test_key))
-    assert objects_in_bucket["Contents"][1]["Key"] == f"{file_name}_compressed{file_ext}"
+    assert (
+        objects_in_bucket["Contents"][1]["Key"] == f"{file_name}_compressed{file_ext}"
+    )
 
 
 def test_handler_jpg(get_file, s3_client):
@@ -57,11 +55,7 @@ def test_handler_jpg(get_file, s3_client):
     """
     event: events.S3Event = {
         "Records": [
-            {
-                "s3": {
-                    "bucket": {"name": test_bucket}, "object": {"key": test_key}
-                }
-            }
+            {"s3": {"bucket": {"name": test_bucket}, "object": {"key": test_key}}}
         ]
     }
     lambda_handler(event, None)
@@ -74,4 +68,6 @@ def test_handler_jpg(get_file, s3_client):
     assert len(objects_in_bucket["Contents"]) == 2
 
     file_name, file_ext = os.path.splitext(os.path.basename(test_key))
-    assert objects_in_bucket["Contents"][1]["Key"] == f"{file_name}_compressed{file_ext}"
+    assert (
+        objects_in_bucket["Contents"][1]["Key"] == f"{file_name}_compressed{file_ext}"
+    )
